@@ -1,6 +1,6 @@
 program bsbt;
 {$mode objfpc}{$H+}
-uses Dos, Classes, SysUtils, miscfunc, dzurl;
+uses Classes, SysUtils, StrUtils, miscfunc, dzurl;
 
 var
   POSTVars: TPostVarList;
@@ -14,7 +14,6 @@ var
   c: Char;
   i: Integer;
   postItems, pair: TArray;
-  lTmp, rTmp: String;
 begin
   postVar := '';
   Result := false;
@@ -29,7 +28,7 @@ begin
     for i := 0 to High(postItems) do
     begin
       pair := explode('=',postItems[i],0);
-      pv.Add(lTmp,rTmp);
+      pv.Add(pair[0],UrlDecode(pair[1]));
     end;
     if pv.Count > 0 then Result := true;
   end;
@@ -41,7 +40,7 @@ var
   i: Integer;
   qs: String;
 begin
-  qs := GetEnv('QUERY_STRING');
+  qs := GetEnvironmentVariable('QUERY_STRING');
   Result := false;  
   if qs <> '' then   
   begin
@@ -58,9 +57,15 @@ end;
 procedure Init;
 begin
   POSTVars := TPostVarList.Create;
-  GETVars := TPostVarList.Create;
-  HasPOST := POST(POSTVars);
+  GETVars := TPostVarList.Create;  
   HasGET := GET(GETVars);
+  if GetEnvironmentVariable('REQUEST_METHOD') = 'POST' then 
+  begin
+    HasPOST := true;
+    POST(POSTVars);
+  end
+  else HasPOST := false;
+  
 end;
 
 procedure CleanUp;
@@ -70,5 +75,7 @@ begin
 end;
 
 begin
+  writeln('Content-Type: text/html',#10#13);  
   Init;
+  writeln('Bogies');
 end.
