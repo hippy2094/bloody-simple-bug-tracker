@@ -4,9 +4,10 @@ unit miscfunc;
 interface
 
 uses
-  Classes, SysUtils, StrUtils;
+  Classes, SysUtils, StrUtils, dzurl;
 
 type
+  THTTPVarType = (vtPOST, vtGET, vtCookie);
   TArray = array of string;
   PPostPair = ^TPostPair;
   TPostPair = record
@@ -27,6 +28,7 @@ type
 function explode(cDelimiter,  sValue : string; iCount : integer) : TArray;
 function implode(cDelimiter: String; arr: TArray): String;
 function inArray(sText: String; arr: TArray): Boolean;
+function GetHTTPVars(var pv: TPostVarList; vartype: THTTPVarType): Boolean;
 
 implementation
 
@@ -75,6 +77,52 @@ begin
     if sText = arr[i] then Result := true;
   end;
 end;
+
+function GetHTTPVars(var pv: TPostVarList; vartype: THTTPVarType): Boolean;
+var
+  postVar: String;
+  c: Char;
+  i: Integer;
+  items, pair: TArray;
+begin
+  postVar := '';
+  Result := false;
+  if vartype = vtPOST then
+  begin
+    while not eof(input) do
+    begin
+      read(c);
+      postVar := postVar + c;
+    end;
+    if postVar <> '' then 
+    begin
+      items := explode('&',postVar,0);
+    end;    
+  end;
+  if vartype = vtGET then
+  begin
+    postVar := GetEnvironmentVariable('QUERY_STRING');
+    if postVar <> '' then 
+    begin
+      items := explode('&',postVar,0);
+    end;        
+  end;
+  if vartype = vtCookie then
+  begin
+    postVar := GetEnvironmentVariable('HTTP_COOKIE');
+    if postVar <> '' then 
+    begin
+      items := explode('&',postVar,0);
+    end;            
+  end;
+  for i := 0 to High(items) do
+  begin
+    pair := explode('=',items[i],0);
+    pv.Add(pair[0],UrlDecode(pair[1]));
+  end;      
+  if pv.Count > 0 then Result := true;
+end;
+
 
 { TPostVarList }
 

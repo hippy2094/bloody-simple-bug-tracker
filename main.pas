@@ -1,71 +1,40 @@
 program bsbt;
-{$mode objfpc}{$H+}
-uses Classes, SysUtils, StrUtils, miscfunc, dzurl;
+{$mode delphi}{$H+}
+uses Classes, SysUtils, StrUtils, miscfunc;
 
 var
   POSTVars: TPostVarList;
   GETVars: TPostVarList;
+  Cookies: TPostVarList;
   HasPOST: Boolean;
   HasGET: Boolean;
 
-function POST(var pv: TPostVarList): Boolean;
-var
-  postVar: String;
-  c: Char;
-  i: Integer;
-  postItems, pair: TArray;
+procedure Init;
 begin
-  postVar := '';
-  Result := false;
-  while not eof(input) do
+  // Check for any POST or GET variables
+  POSTVars := TPostVarList.Create;
+  GETVars := TPostVarList.Create;  
+  HasGET := GetHTTPVars(GETVars,vtGET);
+  if GetEnvironmentVariable('REQUEST_METHOD') = 'POST' then 
   begin
-    read(c);
-    postVar := postVar + c;
-  end;    
-  if postVar <> '' then 
+    HasPOST := GetHTTPVars(POSTVars,vtPOST);
+  end
+  else HasPOST := false;  
+  // Find the cookie!
+  if GetEnvironmentVariable('HTTP_COOKIE') <> '' then
   begin
-    postItems := explode('&',postVar,0);
-    for i := 0 to High(postItems) do
-    begin
-      pair := explode('=',postItems[i],0);
-      pv.Add(pair[0],UrlDecode(pair[1]));
-    end;
-    if pv.Count > 0 then Result := true;
+    GetHTTPVars(Cookies,vtCookie);
   end;
 end;
 
-function GET(var pv: TPostVarList): Boolean;
+procedure dumpPOST;
 var
-  items, pair: TArray;
   i: Integer;
-  qs: String;
 begin
-  qs := GetEnvironmentVariable('QUERY_STRING');
-  Result := false;  
-  if qs <> '' then   
+  for i := 0 to POSTVars.Count -1 do
   begin
-    items := explode('&',qs,0);
-    for i := 0 to High(items) do
-    begin
-      pair := explode('=',items[i],0);
-      pv.Add(pair[0],UrlDecode(pair[1]));
-    end;
-    if pv.Count > 0 then Result := true;
-  end;  
-end;
-
-procedure Init;
-begin
-  POSTVars := TPostVarList.Create;
-  GETVars := TPostVarList.Create;  
-  HasGET := GET(GETVars);
-  if GetEnvironmentVariable('REQUEST_METHOD') = 'POST' then 
-  begin
-    HasPOST := true;
-    POST(POSTVars);
-  end
-  else HasPOST := false;
-  
+    writeln(POSTVars[i].key, '=', POSTVars[i].value);
+  end;
 end;
 
 procedure CleanUp;
@@ -75,7 +44,9 @@ begin
 end;
 
 begin
-  writeln('Content-Type: text/html',#10#13);  
-  Init;
-  writeln('Bogies');
+  writeln('Set-cookie: widget=value');  
+  writeln('Content-Type: text/html',#10#13);    
+  Init;  
+  if HasPOST then dumpPOST;
+  CleanUp;
 end.
